@@ -47,5 +47,13 @@ Anything that begins with a "q" is a quantity (count), and if it begins with a "
 * type: data type stored as
 * unique: number of unique values for that variable
 
-The things to look for are variables that don't have many unique values realtive to the overall size of the dataset.
+The things to look for are variables that don't have many unique values realtive to the overall size of the dataset or variables that have a high percentage of zeros.  You might notice that "HCA" has over 90% zeros.  This is not a mistake or something wrong with the data. In this case the HCA field is a yes/no field that is coded as 1 for yes and 0 for no, a common practice in data science.  So in this case it makes sense that only 7% of the segments are HCAs.
 
+Next we take a look at the distribution of numerical varaibles in the data.  The line, route, series and station are not metrics so they were excluded from this.  In the following plot we will build a seperate histogram for each of the metrics for comparison.  Variables that are all crunched up near a singel value are not going to provide much differentiation between segments.  
+  
+```{r NUm Plot of metrics}
+plot_num(risk10[,c(9:18,22:24)],bins = 30)
+
+```
+  
+Equipment looks like it's all defaulted to a single value and therefore really doesn't add anything to the risk analysis.
