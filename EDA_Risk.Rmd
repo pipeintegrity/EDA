@@ -1,0 +1,51 @@
+---
+title: "Risk Results Disection"
+author: "Joel Anderson"
+date: "July 14, 2018"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE)
+```
+
+## Exploratory Data Analysis
+Before you can drill into the analysis of a dataset you need to wade through the variables and see where they go.  In the first step I will import a CSV file that is a random sample from roughly a hundred thousand records and have a glimpse at the first ten records to see what's in there.  
+  
+```{r import records, echo=TRUE}
+risk10 <- read.csv("risk10.csv")  #read in the csv file
+head(risk10)  # take a look at the first few records
+```
+  
+That's not much to look at visually so lets put the same information in a nice foramted table.
+  
+```{r Drop Column, echo=FALSE}
+#risk <-  risk10[-1] #drop first column from dataframe
+library(knitr)
+library(kableExtra)
+library(dplyr)
+
+kable(head(risk10))%>% kable_styling(bootstrap_options = c("striped", "hover"))%>%
+  scroll_box(width = "100%", height = "300px") # take a look at the head of the file and the fist few records.
+```
+  
+Now we have a dataframe (R paralance for a table of data) and we can see if there are any missing values or zeros.  To do this we use the funmodeling library which has many specialized functions for exploratory data analysis (EDA).  The purpose of EDA is just that, explore, its not intended to do any weighty analysis.  Just like exploring new territory, you don't start out with a specific destination but rather to wander around discover what's there.  To start out this journey lets look at a simple summary of the risk data.
+    
+```{r dataframe summary}
+library(funModeling) #load the specialized library into R, only need to do this once each time you start R
+
+dfstat <- df_status(data = risk10) #dataframe status
+
+kable(dfstat)%>% kable_styling(bootstrap_options = c("striped", "hover"))
+```
+  
+The names in the out put are a little cryptic so here is the run down.  
+Anything that begins with a "q" is a quantity (count), and if it begins with a "p" is a percentage.  Therefore:
+* q_zeros is quantity of zeros in the dataset (p_zeros in percent)
+* q_na: quantity not available (i.e. missing value) - p_na: percent of records with NA
+* q_inf: quantity of infinite values, p_inf: percent of records that are infinite
+* type: data type stored as
+* unique: number of unique values for that variable
+
+The things to look for are variables that don't have many unique values realtive to the overall size of the dataset.
+
