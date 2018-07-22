@@ -13,11 +13,11 @@ knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE)
 Before you can drill into the analysis of a dataset you need to wade through the variables and see where they go.  In the first step I will import a CSV file that is a random sample from roughly a hundred thousand records and have a glimpse at the first ten records to see what's in there.  
   
 ```{r import records, echo=TRUE}
-risk10 <- read.csv("risk10.csv")  #read in the csv file
+risk10 <- read.csv("~/preassessments/riskrun_06202017.csv")  #read in the csv file
 head(risk10)  # take a look at the first few records
 ```
   
-That's not much to look at visually so lets put the same information in a nice foramted table.
+That's not much to look at visually so lets put the same information in a nice formatted table.
   
 ```{r Drop Column, echo=FALSE}
 #risk <-  risk10[-1] #drop first column from dataframe
@@ -29,7 +29,7 @@ kable(head(risk10))%>% kable_styling(bootstrap_options = c("striped", "hover"))%
   scroll_box(width = "100%", height = "300px") # take a look at the head of the file and the fist few records.
 ```
   
-Now we have a dataframe (R paralance for a table of data) and we can see if there are any missing values or zeros.  To do this we use the funmodeling library which has many specialized functions for exploratory data analysis (EDA).  The purpose of EDA is just that, explore, its not intended to do any weighty analysis.  Just like exploring new territory, you don't start out with a specific destination but rather to wander around discover what's there.  To start out this journey lets look at a simple summary of the risk data.
+The purpose of EDA is just that, explore, its not intended to do any weighty analysis.  Just like exploring new territory, you don't start out with a specific destination but rather to wander around discover what's there.  To start out this journey lets look at a simple summary of the risk data.
     
 ```{r dataframe summary}
 library(funModeling) #load the specialized library into R, only need to do this once each time you start R
@@ -47,13 +47,34 @@ Anything that begins with a "q" is a quantity (count), and if it begins with a "
 * type: data type stored as
 * unique: number of unique values for that variable
 
-The things to look for are variables that don't have many unique values realtive to the overall size of the dataset or variables that have a high percentage of zeros.  You might notice that "HCA" has over 90% zeros.  This is not a mistake or something wrong with the data. In this case the HCA field is a yes/no field that is coded as 1 for yes and 0 for no, a common practice in data science.  So in this case it makes sense that only 7% of the segments are HCAs.
-
-Next we take a look at the distribution of numerical varaibles in the data.  The line, route, series and station are not metrics so they were excluded from this.  In the following plot we will build a seperate histogram for each of the metrics for comparison.  Variables that are all crunched up near a singel value are not going to provide much differentiation between segments.  
+The things to look for are variables that don't have many unique values relative to the overall size of the dataset or variables that have a high percentage of zeros.  You might notice that "HCA" has over 90% zeros.  This is not a mistake or something wrong with the data. In this case the HCA field is a yes/no field that is coded as 1 for yes and 0 for no, a common practice in data science.  So in this case it makes sense that only 7% of the segments are HCAs.  Equipment is 97% zeros, so its usefulness is going to be non-existent except for maybe a couple isolated non-zero segments.  
+  
+Next we take a look at the distribution of numerical variables in the data.  The line, route, series and station are not metrics so they were excluded from this.  In the following plot we will build a separate histogram for each of the metrics for comparison.  Variables that are all crunched up near a single value are not going to provide much differentiation between segments.  
   
 ```{r NUm Plot of metrics}
-plot_num(risk10[,c(9:18,22:24)],bins = 30)
+plot_num(risk10[,c(7:15)],bins = 30)
 
 ```
   
-Equipment looks like it's all defaulted to a single value and therefore really doesn't add anything to the risk analysis.
+Equipment looks like it's all defaulted to a single value and Incorrect Operations are all less than 1% therefore either one isn't going to add anything to the risk analysis. As where Third party (TP), and Natural Hazard have a spread of values that are going to separate segments.  
+  
+```{r Quantiles}
+probs=c(0.025,0.5,0.975)
+quants=apply(risk[,7:16],2,quantile,probs=probs)
+kable(quants)%>% kable_styling(bootstrap_options = c("striped", "hover"))
+```
+
+
+The next step is to look at any categorical variables in the dataset.  The only categorical variable is the HCA field.  It is coded as a zero for non-HCA and a one for HCA.  Note that this only looking at the overall frequency not the length.
+
+```{r HCA plot}
+freq(risk10$HCA)
+```
+You can see from the previous plot and table that HCA segments make up roughly 7% of the overall segment count even though HCAs are approximately 1.5% of total mileage.  This implies that HCAs are more diverse in information than the overall population since more dyn-segs are created per mile.  
+
+Now lets get to more specific measures and how they are distributed.  Since risk is the product of probability and consequence lets look at the overall make-up of those.  First we will look at probability of Failure.  
+  
+```{r}
+ggplot(risk10,aes(PoF))+geom_density(fill='skyblue3',alpha=0.5)+theme_bw(14,"serif")+labs(title="Probability of Failure")
+```
+  
