@@ -83,8 +83,27 @@ You can see from the previous plot and table that HCA segments make up roughly 7
 Now lets get to more specific measures and how they are distributed.  Since risk is the product of probability and consequence lets look at the overall make-up of those.  First we will look at probability of Failure.  
   
 ```{r fig.cap="PoF Density Curve"}
+
 ggplot(risk10,aes(PoF))+geom_density(fill='skyblue3',alpha=0.5)+theme_bw(14,"serif")+labs(title="Probability of Failure")
 ```
+The PoF ranges from near zero to almost 1 but we don't know which threats are the largest contributor to the overall PoF.  IN the next plot the overall PoF is broken out for HCA (coded as 1) vs. Non-HCA (Coded as a 0) to see if the PoF in HCA's are significantly different than Non-HCAs.  
+```{r fig.cap="PoF Density Curve vs. HCA Type"}
+
+risk10$HCA <- as.factor(risk10$HCA)
+
+ggplot(risk10,aes(PoF))+
+  geom_density(aes(fill=HCA),alpha=0.4)+
+  theme_bw(14,"serif")+labs(title="Probability of Failure")+
+  scale_fill_brewer(type = "qual",palette = "Set1")+
+  theme(legend.position = c(0.9,0.8))
+```
+  
+The overall PoF has a lower density at the lower PoF values but a higher PoF at higher PoF values.  This is somewhat counterproductive since the intent of an IM program is to reduce the probability of failure in HCAs in particular.  This is further evident in the boxplot of the PoF for HCA vs. Non-HCA.
+
+```{r HCA PoF Boxplot, fig.cap="PoF Boxplot by HCA Type"}
+ggplot(risk10,aes(HCA,PoF))+geom_boxplot(aes(fill=HCA),outlier.shape = 1,alpha=0.5)+theme_bw(14,"serif")+labs(title="Probability of Failure by HCA Type")+scale_fill_brewer(type = "qual",palette = "Set1")+theme(legend.position = "none")
+```
+
   
 The following plot is a density curve for the Consequence of Failure (CoF).  The units of measure for Consequences is dollars.  
   
