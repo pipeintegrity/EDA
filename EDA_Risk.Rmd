@@ -1,18 +1,21 @@
 ---
 title: "Risk Results Disection"
 author: "Joel Anderson"
-date: "July 14, 2018"
-output: html_document
+date: "July 23, 2018"
+output:
+  word_document: default
+  html_document: default
+  
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE)
+knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE, dpi = 300)
 ```
 
 ## Exploratory Data Analysis
-Before you can drill into the analysis of a dataset you need to wade through the variables and see where they go.  In the first step I will import a CSV file that is a random sample from roughly a hundred thousand records and have a glimpse at the first ten records to see what's in there.  
+Before you can drill into the analysis of a dataset you need to wade through the variables and see where they go.  In the first step I will import a CSV file that contains roughly one-million records and have a glimpse at the first ten records to see what's in there.  
   
-```{r import records, echo=TRUE}
+```{r import records, fig.cap="Glimpse of First Ten Records"}
 risk10 <- read.csv("~/preassessments/riskrun_06202017.csv")  #read in the csv file
 head(risk10)  # take a look at the first few records
 ```
@@ -26,55 +29,108 @@ library(kableExtra)
 library(dplyr)
 
 kable(head(risk10))%>% kable_styling(bootstrap_options = c("striped", "hover"))%>%
-  scroll_box(width = "100%", height = "300px") # take a look at the head of the file and the fist few records.
+ # scroll_box(width = "100%", height = "300px") # take a look at the head of the file and the fist few records.
 ```
   
 The purpose of EDA is just that, explore, its not intended to do any weighty analysis.  Just like exploring new territory, you don't start out with a specific destination but rather to wander around discover what's there.  To start out this journey lets look at a simple summary of the risk data.
-    
-```{r dataframe summary}
+  
+```{r,include=FALSE}
 library(funModeling) #load the specialized library into R, only need to do this once each time you start R
+dfstat <- df_status(risk10)
+```
 
-dfstat <- df_status(data = risk10) #dataframe status
+    
+```{r dataframe summary, fig.cap="Variable Summary", include=TRUE}
 
-kable(dfstat)%>% kable_styling(bootstrap_options = c("striped", "hover"))
+kable(dfstat)%>% kable_styling(bootstrap_options = c("striped", "hover"), latex_options = "striped")
 ```
   
 The names in the out put are a little cryptic so here is the run down.  
-Anything that begins with a "q" is a quantity (count), and if it begins with a "p" is a percentage.  Therefore:
-* q_zeros is quantity of zeros in the dataset (p_zeros in percent)
-* q_na: quantity not available (i.e. missing value) - p_na: percent of records with NA
-* q_inf: quantity of infinite values, p_inf: percent of records that are infinite
-* type: data type stored as
-* unique: number of unique values for that variable
-
+Anything that begins with a "q" is a quantity (count), and if it begins with a "p" is a percentage.  Therefore:  
+* q_zeros is quantity of zeros in the dataset (p_zeros in percent)  
+* q_na: quantity not available (i.e. missing value) - p_na: percent of records with NA  
+* q_inf: quantity of infinite values, p_inf: percent of records that are infinite  
+* type: data type that it is stored as  
+* unique: number of unique values for that variable  
+  
 The things to look for are variables that don't have many unique values relative to the overall size of the dataset or variables that have a high percentage of zeros.  You might notice that "HCA" has over 90% zeros.  This is not a mistake or something wrong with the data. In this case the HCA field is a yes/no field that is coded as 1 for yes and 0 for no, a common practice in data science.  So in this case it makes sense that only 7% of the segments are HCAs.  Equipment is 97% zeros, so its usefulness is going to be non-existent except for maybe a couple isolated non-zero segments.  
   
 Next we take a look at the distribution of numerical variables in the data.  The line, route, series and station are not metrics so they were excluded from this.  In the following plot we will build a separate histogram for each of the metrics for comparison.  Variables that are all crunched up near a single value are not going to provide much differentiation between segments.  
   
-```{r NUm Plot of metrics}
-plot_num(risk10[,c(7:15)],bins = 30)
+```{r NUm Plot of metrics, fig.cap="Plot of Threat PoFs", message=FALSE}
+library(reshape2)
+risk_rshp <- melt(risk10[,c(7:15,20:21)])
+ggplot(risk_rshp, aes(value))+geom_histogram(aes(fill=variable),col='black')+facet_wrap(~variable,scales = "free_x")+theme_bw(base_family = "serif")+theme(legend.position = "none", axis.text.x = element_text(size=rel(0.8)))+labs(title="Probability of Failure",x="PoF")
 
 ```
   
-Equipment looks like it's all defaulted to a single value and Incorrect Operations are all less than 1% therefore either one isn't going to add anything to the risk analysis. As where Third party (TP), and Natural Hazard have a spread of values that are going to separate segments.  
+Equipment looks like it's all defaulted to a single value and Incorrect Operations are all less than 1% therefore either one isn't going to add anything to the risk analysis. As where Third party (TP), and Natural Hazard have a spread of values that are going to separate segments.  Intentional Damage PoF is so small that it's not likely to significant contribution to risk.
   
-```{r Quantiles}
+```{r Quantiles, fig.cap="Threat PoF Quantiles"}
 probs=c(0.025,0.5,0.975)
-quants=apply(risk[,7:16],2,quantile,probs=probs)
+quants=apply(risk10[,7:15],2,quantile,probs=probs)
 kable(quants)%>% kable_styling(bootstrap_options = c("striped", "hover"))
 ```
 
 
 The next step is to look at any categorical variables in the dataset.  The only categorical variable is the HCA field.  It is coded as a zero for non-HCA and a one for HCA.  Note that this only looking at the overall frequency not the length.
 
-```{r HCA plot}
+```{r HCA plot, fig.cap="Proportion of HCA Segments"}
 freq(risk10$HCA)
 ```
-You can see from the previous plot and table that HCA segments make up roughly 7% of the overall segment count even though HCAs are approximately 1.5% of total mileage.  This implies that HCAs are more diverse in information than the overall population since more dyn-segs are created per mile.  
+You can see from the previous plot and table that HCA segments make up roughly 7% of the overall segment count even though HCAs are approximately 1.5% of total mileage.  This implies that HCAs have more changes in information per mile than the overall system since new dyn-segs are created when there is a change of information along the length.  
 
 Now lets get to more specific measures and how they are distributed.  Since risk is the product of probability and consequence lets look at the overall make-up of those.  First we will look at probability of Failure.  
   
-```{r}
+```{r fig.cap="PoF Density Curve"}
 ggplot(risk10,aes(PoF))+geom_density(fill='skyblue3',alpha=0.5)+theme_bw(14,"serif")+labs(title="Probability of Failure")
 ```
   
+The following plot is a density curve for the Consequence of Failure (CoF).  The units of measure for Consequences is dollars.  
+  
+```{r fig.cap="CoF Denisty Curve", dpi=300}
+
+ggplot(risk10,aes(CoF))+geom_density(fill='orangered',alpha=0.5)+theme_bw(14,"serif")+labs(title="Consequence of Failure", x="CoF ($) - Log Scale")+scale_x_log10()
+```
+
+The density curve indicates that majority of segments have a CoF less than $1MM with some segments extending out past \$10MM.  This is typical for Consequences with the majority of the segments at the far left of the scale with very long tails to the distribution that spans magnitudes of order.  The 95% quantile for PoF is from 1.1% to 79%.  
+  
+```{r Total Risk Density Curve, warning=FALSE}
+library(viridisLite)
+pal=viridis(4)
+ggplot(risk10,aes(Total_Risk))+geom_density(alpha=0.5,fill=pal[1])+theme_bw(14,"serif")+labs(title="Total Risk", x="Risk ($/Mi-Yr.) - Log Scale")+scale_x_log10()
+```
+  
+Risk has a bimodal distribution with a peak at about 10^4 and another at 10^5 dollars per mile-year.
+```{r, fig.cap="PoF and CoF quantiles"}
+probs=c(0.025,0.5,0.975)
+quants2=apply(risk10[,16:17],2,quantile,probs=probs)
+kable(quants2)%>% kable_styling(bootstrap_options = c("striped", "hover"))
+```
+  
+A decision tree is a tool that gives a graphical representation of what variables create separation in the segments.  In this case the overall PoF is the dependent variable that is being divided based on all the threat PoFs.  For each node, the information contained is the average PoF for that node, the number of segments in that node and the percentage of segments.  The way to read a decision tree is from the top, down and then each node is a yes/no question that tells you where that variable was split to give the maximum differentiation between the two splits.  
+  
+```{r decision tree, dpi=300, fig.cap="Decision Tree for PoF"}
+library(rpart)
+library(rattle)
+pofsub <- risk10[,c(7:16,20:21)]
+risktree <- rpart(PoF ~.,data = pofsub,control=rpart.control(maxdepth=3))
+fancyRpartPlot(risktree, palettes='BuGn', caption = "Decision Tree for System-Wide PoF")
+
+```
+  
+Based on this decision tree the biggest variables that separate segments based on PoF are Manufacturing, External Corrosion and Third Party.  This demonstrates that the variable that creates the most separation is Manufacturing.  Then as you drill down it show the interaction with other threats.  Such as when manufacturing threat is high (man_PoF< 0.1 = No) the biggest interaction is with Third Party.  Which makes sense that when manufacturing threat is high, the line is more susceptible to third party damage.  When Manufacturing is low (man_PoF< 0.1 = Yes) External corrosion is the biggest threat and Third Party doesn't show any interaction on that branch.  This indicates that with low Manufacturing threat External Corrosion takes over as the driver of PoF.  This also is intuitive that if Manufacturing is a less concern then it is far less susceptible to Third Party damage and External Corrosion is the main concern.  It is noticeable that several of the threats do not appear in the decision tree.  This indicates that they are not major differentiation on the system-wide basis.  However this does not mean that they can be disregarded.  This is a system-wide view and if we were to cull out a specific line and run the decision tree algorithm on that and get key threats.  In the following plot you can the results from a specific line.
+  
+```{r Line decision tree, fig.cap="Decision Tree for a specific line"}
+#library(dplyr)
+linepofsub <-  filter(risk10,`ï..Line`=="ML3") #filter for ML3
+ML2sub <- linepofsub[,c(7:16,20:21)]
+ML2tree <- rpart(PoF ~.,data = ML2sub,control=rpart.control(maxdepth=3))
+fancyRpartPlot(risktree, palettes='BuGn', caption = "Decision Tree for Line Specific PoF")
+```
+  
+In the line-specific decision tree Third Party becomes the main threat that drives PoF whereas the system level it was manufacturing.  Also, when the Third Party is below 0.26, Natural Hazards becomes a significant threat where in the overall system level Natural Hazards didn't even appear in any of the nodes.  
+  
+In this document we have seen where them main risk drivers are at a system-wide and a line specific level.  There are a number of variables that are unlikely to create differentiation between segments such as: Incorrect Operations and Construction.  To provide better discernment between segments it would be helpful to further develop the data feeding these threats and also the evaluation algorithms as well.  
+  
+The biggest differentiation of risk are Third Party, External Corrosion and Manufacturing.  Manufacturing can be driven up by unknown manufacturing dates creating conservative defaults.  It should be further evaluated what percentage of segments are defaulted versus actual values.
